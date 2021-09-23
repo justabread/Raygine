@@ -1,0 +1,13 @@
+[remap]
+
+importer="image"
+type="Image"
+path="res://.import/door_wall.png-45e5a18944e9480c628dee7fe259dfea.image"
+
+[deps]
+
+source_file="res://textures/door_wall.png"
+dest_files=[ "res://.import/door_wall.png-45e5a18944e9480c628dee7fe259dfea.image" ]
+
+[params]
+
