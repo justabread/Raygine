@@ -14,12 +14,14 @@ var yPlane = 1.0
 
 #controls the resolution of the walls
 var xRes = 1
+var entityXRes = 1
 
 const MOVSPEED = 0.03
 
 var texWidth = 64
 var texHeight = 64
 
+var barrel = load("res://textures/pics/barrel.png")
 var wall = load("res://textures/wall.png")
 var door1 = load("res://textures/door_1.png")
 var door2 = load("res://textures/door_2.png")
@@ -32,7 +34,7 @@ var textures = [
 	doorwall
 ]
 var map = [
-	[1, 1, 1, 1, 1, 1, 1, 1],
+	[1, 1, 2, 1, 2, 2, 1, 1],
 	[2, 0, 0, 0, 0, 0, 0, 2],
 	[1, 0, 3, 0, 0, 0, 0, 1],
 	[2, 0, 0, 0, 0, 0, 0, 2],
@@ -41,6 +43,32 @@ var map = [
 	[1, 0, 1, 0, 1, 0, 0, 1],
 	[1, 1, 3, 2, 1, 1, 3, 1]
 ]
+
+class Entity:
+	var x
+	var y
+	var color
+	
+	func _init(_x,_y,_color):
+		x=_x
+		y=_y
+		color=_color
+
+var sprites = [
+	Entity.new(2.0, 1.0, Color( 1, 0.84, 0, 1 )),
+	Entity.new(2.0, 5.0, Color( 0, 0, 1, 1 )),
+]
+
+var ZBuffer = []
+var spriteOrder = []
+var spriteDistance = []
+
+func sortSprites(order, dist):
+	order.sort()
+	order.invert()
+	
+	dist.sort()
+	dist.invert()
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -64,6 +92,7 @@ func _draw():
 
 func game():	
 	#checking input events every frame
+#	print(str(xPos) + ", " + str(yPos))
 	if Input.is_action_pressed("gam_exit"):
 		get_tree().quit()
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
@@ -199,7 +228,7 @@ func game():
 #			textures[texNum].lock()
 #			var texColor = textures[texNum].get_pixel(texX, texY)
 #			textures[texNum].unlock()
-#			draw_primitive(PoolVector2Array([Vector2(x,y)]), texColor, PoolVector2Array())
+#			draw_primitive(PoolVector2Array([Vector2(x,y)]), PoolColorArray( [texColor] ), PoolVector2Array())
 
 		var colors = [Color( 0, 0, 0, 0 ) , Color( 0, 0, 1, 1 ), Color( 1, 0.84, 0, 1 ) , Color( 0.98, 0.5, 0.45, 1 )]
 		var colColor = colors[map[mapX][mapY]]
@@ -210,8 +239,54 @@ func game():
 			colColor.b = colColor.b / 1.5
 
 		draw_line(Vector2(column, colStart), Vector2(column, colEnd), colColor, xRes)
-
+		ZBuffer.push_back(perpWallDist)
 		column += xRes
+		
+	for i in sprites.size():
+		spriteOrder.push_back(i)
+		spriteDistance.push_back((pow((xPos - sprites[i].x), 2) + pow((yPos - sprites[i].y), 2)))
+		
+	sortSprites(spriteOrder, spriteDistance)
+	
+	for j in sprites.size():
+		var xSprite = sprites[spriteOrder[j]].x - xPos
+		var ySprite = sprites[spriteOrder[j]].y - yPos
+		
+		var invDet = 1.0 / (xPlane * yDir - xDir * yPlane)
+		
+		var xTransform = invDet * (yDir * xSprite - xDir * ySprite)
+		var yTransform = invDet * (-yPlane * xSprite + xPlane * ySprite)
+		
+		var spriteScreenX = int((width / 2) * (1 + xTransform / yTransform))
+		var spriteHeight = abs(int(height / (yTransform)))
+		var spriteWidth = abs(int(height / (yTransform)))
+		
+		var drawStartY = -spriteHeight / 2 + height / 2
+		if(drawStartY < 0):
+			drawStartY = 0
+		var drawEndY = spriteHeight / 2 + height / 2
+		if(drawEndY >= height):
+			drawEndY = height - 1
+			
+		var drawStartX = -spriteWidth / 2 + spriteScreenX
+		if(drawStartX < 0):
+			drawStartX = 0
+		var drawEndX = spriteWidth / 2 + spriteScreenX
+		if(drawEndX >= width):
+			drawEndX = width - 1
+		
+		for stripe in range(drawStartX, drawEndX):
+			if(yTransform > 0 && stripe > 0 && stripe < width && yTransform < ZBuffer[stripe]):
+				draw_line(Vector2(stripe, drawStartY), Vector2(stripe, drawEndY), sprites[j].color, entityXRes)
+		
+		
+		
+#		remove_child(sprites[j].entitySprite)
+#		sprites[j].entitySprite.position.x = drawStartX
+#		sprites[j].entitySprite.position.y = drawStartY
+#		sprites[j].entitySprite.scale.x = spriteHeight
+#		sprites[j].entitySprite.scale.y = spriteWidth
+#		add_child(sprites[j].entitySprite)
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
