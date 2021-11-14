@@ -55,7 +55,6 @@ class Entity:
 		color=_color
 
 var sprites = [
-	Entity.new(2.0, 1.0, Color( 1, 0.84, 0, 1 )),
 	Entity.new(2.0, 5.0, Color( 0, 0, 1, 1 )),
 ]
 
@@ -241,7 +240,7 @@ func game():
 		draw_line(Vector2(column, colStart), Vector2(column, colEnd), colColor, xRes)
 		ZBuffer.push_back(perpWallDist)
 		column += xRes
-		
+	
 	for i in sprites.size():
 		spriteOrder.push_back(i)
 		spriteDistance.push_back((pow((xPos - sprites[i].x), 2) + pow((yPos - sprites[i].y), 2)))
@@ -249,44 +248,36 @@ func game():
 	sortSprites(spriteOrder, spriteDistance)
 	
 	for j in sprites.size():
-		var xSprite = sprites[spriteOrder[j]].x - xPos
-		var ySprite = sprites[spriteOrder[j]].y - yPos
-		
-		var invDet = 1.0 / (xPlane * yDir - xDir * yPlane)
-		
-		var xTransform = invDet * (yDir * xSprite - xDir * ySprite)
-		var yTransform = invDet * (-yPlane * xSprite + xPlane * ySprite)
-		
-		var spriteScreenX = int((width / 2) * (1 + xTransform / yTransform))
-		var spriteHeight = abs(int(height / (yTransform)))
-		var spriteWidth = abs(int(height / (yTransform)))
-		
-		var drawStartY = -spriteHeight / 2 + height / 2
+		var spriteX: float = sprites[spriteOrder[j]].x - xPos
+		var spriteY: float = sprites[spriteOrder[j]].y - yPos
+		var invDet: float = 1.0 / (xPlane * yDir - xDir * yPlane)
+		var transformX: float = invDet * (yDir * spriteX - xDir * spriteY)
+		var transformY: float = invDet * (-yPlane * spriteX + xPlane * spriteY)
+		var spriteScreenX: int = int((width / 2) * (1 + transformX / transformY));
+
+		var spriteHeight: int = abs(int(height / (transformY)))
+		var drawStartY: int = -spriteHeight / 2 + height / 2
+
 		if(drawStartY < 0):
 			drawStartY = 0
-		var drawEndY = spriteHeight / 2 + height / 2
+		var drawEndY: int = spriteHeight / 2 + height / 2
+
 		if(drawEndY >= height):
 			drawEndY = height - 1
-			
-		var drawStartX = -spriteWidth / 2 + spriteScreenX
+		var spriteWidth: int = abs( int (height / (transformY)))
+		var drawStartX: int = -spriteWidth / 2 + spriteScreenX
 		if(drawStartX < 0):
 			drawStartX = 0
-		var drawEndX = spriteWidth / 2 + spriteScreenX
+
+		var drawEndX: int = spriteWidth / 2 + spriteScreenX
 		if(drawEndX >= width):
 			drawEndX = width - 1
 		
 		for stripe in range(drawStartX, drawEndX):
-			if(yTransform > 0 && stripe > 0 && stripe < width && yTransform < ZBuffer[stripe]):
+			if(transformY > 0 && stripe > 0 && stripe < width && transformY < ZBuffer[stripe]):
 				draw_line(Vector2(stripe, drawStartY), Vector2(stripe, drawEndY), sprites[j].color, entityXRes)
-		
-		
-		
-#		remove_child(sprites[j].entitySprite)
-#		sprites[j].entitySprite.position.x = drawStartX
-#		sprites[j].entitySprite.position.y = drawStartY
-#		sprites[j].entitySprite.scale.x = spriteHeight
-#		sprites[j].entitySprite.scale.y = spriteWidth
-#		add_child(sprites[j].entitySprite)
+				
+		ZBuffer.clear()
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
