@@ -1,38 +1,25 @@
 extends Node2D
 
+var isGameRunning = false
+
 var width
 var height
-
 var xPos = 1.0
 var yPos = 4.0
-
 var xDir = 1.0
 var yDir = 0.0
-
 var xPlane = 0.0
 var yPlane = 1.0
-
-#controls the resolution of the walls
+#controls the resolution of the walls (LEAVE AT 1)
 var xRes = 1
-var entityXRes = 1
+var texSize = 64
+var currentTime = 0
+var isTimerOn = false
 
+const PICKUPDISTANCE = 0.1
 const MOVSPEED = 0.03
 
-var texWidth = 64
-var texHeight = 64
 
-var barrel = load("res://textures/pics/barrel.png")
-var wall = load("res://textures/wall.png")
-var door1 = load("res://textures/door_1.png")
-var door2 = load("res://textures/door_2.png")
-var doorwall = load("res://textures/door_wall.png")
-
-var textures = [
-	wall,
-	door1,
-	door2,
-	doorwall
-]
 var map = [
 	[1, 1, 2, 1, 2, 2, 1, 1],
 	[2, 0, 0, 0, 0, 0, 0, 2],
@@ -44,9 +31,12 @@ var map = [
 	[1, 1, 3, 2, 1, 1, 3, 1]
 ]
 
+var spriteColor = Color( 0, 0.5, 1, 1 )
+
 class Entity:
 	var x
 	var y
+	var distance
 	var color
 	
 	func _init(_x,_y,_color):
@@ -55,14 +45,29 @@ class Entity:
 		color=_color
 
 var sprites = [
-	Entity.new(2.0, 5.0, Color( 0, 0, 1, 1 )),
+	Entity.new(2.0, 5.0, spriteColor),
+	Entity.new(3.0, 6.0, spriteColor)
 ]
+
+var currentScore = 0
+var goalScore = sprites.size()
 
 var ZBuffer = []
 var spriteOrder = []
 var spriteDistance = []
 
-func sortSprites(order, dist):
+func startTimer():
+	if(!isTimerOn):
+		isTimerOn = true
+
+func stopTimer():
+	if(isTimerOn):
+		isTimerOn = false
+
+func resetTimer():
+	currentTime = 0
+
+func SortSprites(order, dist):
 	order.sort()
 	order.invert()
 	
@@ -74,6 +79,8 @@ func _ready():
 	width = get_viewport().size.x
 	height = get_viewport().size.y
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	isGameRunning = true
+	startTimer()
 	
 func _input(event):
 	if event is InputEventMouseMotion:
@@ -131,7 +138,7 @@ func game():
 	draw_rect(rectFloor,Color(1,1,1),true)
 
 	var column = 0
-	for x in range(column, width, xRes):
+	for x in range(column, width):
 		var cameraX = 2.0 * column / width - 1.0
 		var rayXPos = xPos
 		var rayYPos = yPos
@@ -211,14 +218,14 @@ func game():
 			
 		wallX -= floor(wallX)
 		
-		var texX = int(wallX * float(texWidth))
+		var texX = int(wallX * float(texSize))
 		if !side && rayXDir > 0:
-			texX = texWidth - texX - 1
+			texX = texSize - texX - 1
 			
 		if side && rayYDir < 0:
-			texX = texWidth - texX - 1
+			texX = texSize - texX - 1
 			
-		var step = 1.0 * texHeight / colHeight
+		var step = 1.0 * texSize / colHeight
 		var texPos = (colStart - height / 2 + colHeight / 2) * step
 		
 #		for y in range(colStart, colEnd, xRes):
@@ -243,42 +250,60 @@ func game():
 	
 	for i in sprites.size():
 		spriteOrder.push_back(i)
-		spriteDistance.push_back((pow((xPos - sprites[i].x), 2) + pow((yPos - sprites[i].y), 2)))
+		var distance = pow((xPos - sprites[i].x), 2) + pow((yPos - sprites[i].y), 2)
+		spriteDistance.push_back(distance)
+		sprites[i].distance = distance
 		
-	sortSprites(spriteOrder, spriteDistance)
+	SortSprites(spriteOrder, spriteDistance)
 	
 	for j in sprites.size():
-		var spriteX: float = sprites[spriteOrder[j]].x - xPos
-		var spriteY: float = sprites[spriteOrder[j]].y - yPos
+		var xSprite: float = sprites[spriteOrder[j]].x - xPos
+		var ySprite: float = sprites[spriteOrder[j]].y - yPos
 		var invDet: float = 1.0 / (xPlane * yDir - xDir * yPlane)
-		var transformX: float = invDet * (yDir * spriteX - xDir * spriteY)
-		var transformY: float = invDet * (-yPlane * spriteX + xPlane * spriteY)
-		var spriteScreenX: int = int((width / 2) * (1 + transformX / transformY));
+		var xTransform: float = invDet * (yDir * xSprite - xDir * ySprite)
+		var yTransform: float = invDet * (-yPlane * xSprite + xPlane * ySprite)
+		var spriteScreenX: int = int((width / 2) * (1 + xTransform / yTransform));
 
-		var spriteHeight: int = abs(int(height / (transformY)))
-		var drawStartY: int = -spriteHeight / 2 + height / 2
+		var spriteSize: int = abs(int(height / (yTransform))) / 4
+		var drawStartY: int = -spriteSize / 2 + height / 2
 
 		if(drawStartY < 0):
 			drawStartY = 0
-		var drawEndY: int = spriteHeight / 2 + height / 2
+		var drawEndY: int = spriteSize / 2 + height / 2
 
 		if(drawEndY >= height):
 			drawEndY = height - 1
-		var spriteWidth: int = abs( int (height / (transformY)))
-		var drawStartX: int = -spriteWidth / 2 + spriteScreenX
+		var drawStartX: int = -spriteSize / 2 + spriteScreenX
 		if(drawStartX < 0):
 			drawStartX = 0
 
-		var drawEndX: int = spriteWidth / 2 + spriteScreenX
+		var drawEndX: int = spriteSize / 2 + spriteScreenX
 		if(drawEndX >= width):
 			drawEndX = width - 1
-		
+
 		for stripe in range(drawStartX, drawEndX):
-			if(transformY > 0 && stripe > 0 && stripe < width && transformY < ZBuffer[stripe]):
-				draw_line(Vector2(stripe, drawStartY), Vector2(stripe, drawEndY), sprites[j].color, entityXRes)
-				
-		ZBuffer.clear()
+			if(yTransform > 0 && stripe > 0 && stripe < width && yTransform < ZBuffer[stripe]):
+				draw_line(Vector2(stripe, drawStartY), Vector2(stripe, drawEndY), sprites[j].color, xRes)
+
+	for k in sprites.size():
+		if(sprites[spriteOrder[k]].distance <= PICKUPDISTANCE):
+			sprites.remove(spriteOrder[k])
+			currentScore += 1
+
+	$GUI/scoreLabel.text = var2str(currentScore)
+	ZBuffer.clear()
+	spriteOrder.clear()
+	spriteDistance.clear()
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
-	update()
+	if(isGameRunning):
+		update()
+		if(isTimerOn):
+			currentTime += delta
+			var milseconds = fmod(currentTime, 1)*10
+			var seconds = fmod(currentTime, 60)
+			var minutes = fmod(currentTime, 60*60) / 60
+			var hours = fmod(currentTime, 60*60*60) / 60
+			
+			$GUI/timerLabel.text = "%01d:%02d:%02d:%01d" % [hours,minutes,seconds,milseconds]
