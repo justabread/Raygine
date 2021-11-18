@@ -21,14 +21,18 @@ const MOVSPEED = 0.03
 
 
 var map = [
-	[1, 1, 2, 1, 2, 2, 1, 1],
-	[2, 0, 0, 0, 0, 0, 0, 2],
-	[1, 0, 3, 0, 0, 0, 0, 1],
-	[2, 0, 0, 0, 0, 0, 0, 2],
-	[1, 0, 1, 0, 2, 0, 3, 1],
-	[1, 0, 1, 0, 2, 0, 0, 1],
-	[1, 0, 1, 0, 1, 0, 0, 1],
-	[1, 1, 3, 2, 1, 1, 3, 1]
+	[1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 2, 1],
+	[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+	[1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+	[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+	[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+	[1, 1, 3, 2, 1, 1, 3, 1, 1, 1, 1, 1]
 ]
 
 var spriteColor = Color( 0, 0.5, 1, 1 )
@@ -134,8 +138,8 @@ func game():
 	#draw floor and ceiling
 	var rectCeil = Rect2(0,0,width,height/2)
 	var rectFloor = Rect2(0,height/2,width,height/2)
-	draw_rect(rectCeil,Color(0.1,0.1,0.1),true)
-	draw_rect(rectFloor,Color(1,1,1),true)
+	draw_rect(rectCeil,Color(0,1,1),true)
+	draw_rect(rectFloor,Color(0.7,0.7,0.7),true)
 
 	var column = 0
 	for x in range(column, width):
@@ -204,12 +208,10 @@ func game():
 			colStart = 0
 
 		var colEnd = colHeight / 2.0 + height / 2.0
-
 		if colEnd >= height:
 			colEnd = height - 1
 			
 		var texNum = map[mapX][mapY] - 1
-		
 		var wallX
 		if !side:
 			wallX = yPos + perpWallDist * rayYDir
@@ -227,15 +229,6 @@ func game():
 			
 		var step = 1.0 * texSize / colHeight
 		var texPos = (colStart - height / 2 + colHeight / 2) * step
-		
-#		for y in range(colStart, colEnd, xRes):
-#			var texY = int(texPos) & (texHeight - 1)
-#			texPos += step
-#			textures[texNum].lock()
-#			var texColor = textures[texNum].get_pixel(texX, texY)
-#			textures[texNum].unlock()
-#			draw_primitive(PoolVector2Array([Vector2(x,y)]), PoolColorArray( [texColor] ), PoolVector2Array())
-
 		var colors = [Color( 0, 0, 0, 0 ) , Color( 0, 0, 1, 1 ), Color( 1, 0.84, 0, 1 ) , Color( 0.98, 0.5, 0.45, 1 )]
 		var colColor = colors[map[mapX][mapY]]
 
