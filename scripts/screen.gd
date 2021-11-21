@@ -4,8 +4,8 @@ var isGameRunning = false
 
 var width
 var height
-var xPos = 1.0
-var yPos = 4.0
+var xPos = 1.5
+var yPos = 4.5
 var xDir = 1.0
 var yDir = 0.0
 var xPlane = 0.0
@@ -19,20 +19,19 @@ var isTimerOn = false
 const PICKUPDISTANCE = 0.1
 const MOVSPEED = 0.03
 
-
 var map = [
-	[1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 2, 1],
-	[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+	[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+	[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 3, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+	[1, 2, 3, 0, 1, 2, 0, 1, 2, 3, 2, 1],
+	[1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1],
+	[1, 0, 3, 0, 1, 0, 3, 2, 1, 2, 0, 1],
+	[1, 0, 2, 0, 0, 0, 0, 0, 0, 3, 0, 1],
+	[1, 0, 1, 0, 1, 0, 0, 3, 1, 2, 0, 1],
+	[1, 0, 0, 0, 3, 0, 0, 1, 0, 0, 0, 1],
+	[1, 0, 2, 0, 2, 0, 1, 2, 0, 3, 2, 1],
 	[1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-	[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-	[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-	[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-	[1, 0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 1],
-	[1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1],
-	[1, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 1],
-	[1, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1],
-	[1, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 1],
-	[1, 1, 3, 2, 1, 1, 3, 1, 1, 1, 1, 1]
+	[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
 var spriteColor = Color( 0, 0.5, 1, 1 )
@@ -48,13 +47,10 @@ class Entity:
 		y=_y
 		color=_color
 
-var sprites = [
-	Entity.new(2.0, 5.0, spriteColor),
-	Entity.new(3.0, 6.0, spriteColor)
-]
+var sprites = []
 
 var currentScore = 0
-var goalScore = sprites.size()
+var goalScore = 0
 
 var ZBuffer = []
 var spriteOrder = []
@@ -63,6 +59,18 @@ var spriteDistance = []
 func startTimer():
 	if(!isTimerOn):
 		isTimerOn = true
+
+func spawnPoints():
+	sprites.clear()
+	
+	for i in range(0, map.size()):
+		for j in range(0, map.size()):
+			if(map[i][j] == 0):
+				randomize()
+				var chance = randi()%10+1
+				if(chance == 2):
+					var entity = Entity.new(float(i + 0.5), float(j + 0.5), spriteColor)
+					sprites.push_back(entity)
 
 func stopTimer():
 	if(isTimerOn):
@@ -84,7 +92,12 @@ func _ready():
 	height = get_viewport().size.y
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	isGameRunning = true
+	spawnPoints()
+	goalScore = sprites.size()
 	startTimer()
+	$GUI/timerPanel.visible = true
+	$GUI/pointsPanel.visible = true
+	$GUI/gameOverPanel.visible = false
 	
 func _input(event):
 	if event is InputEventMouseMotion:
@@ -135,12 +148,23 @@ func game():
 		if !map[int(xPos + yDir * MOVSPEED)][int(yPos)]:
 			xPos += yDir * MOVSPEED
 	
+	if currentScore >= goalScore:
+		var finalScore = currentScore / floor(currentTime)
+#		$GUI/gameOverPanel/finalScoreLabel.text = var2str(finalScore)
+		$GUI/gameOverPanel/finalScoreLabel.text = var2str(stepify(finalScore,0.01))
+
+		$GUI/timerPanel.visible = false
+		$GUI/pointsPanel.visible = false
+		$GUI/gameOverPanel.visible = true
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		isGameRunning = false
+	
 	#draw floor and ceiling
 	var rectCeil = Rect2(0,0,width,height/2)
 	var rectFloor = Rect2(0,height/2,width,height/2)
 	draw_rect(rectCeil,Color(0,1,1),true)
 	draw_rect(rectFloor,Color(0.7,0.7,0.7),true)
-
+	
 	var column = 0
 	for x in range(column, width):
 		var cameraX = 2.0 * column / width - 1.0
@@ -248,7 +272,6 @@ func game():
 		sprites[i].distance = distance
 		
 	SortSprites(spriteOrder, spriteDistance)
-	
 	for j in sprites.size():
 		var xSprite: float = sprites[spriteOrder[j]].x - xPos
 		var ySprite: float = sprites[spriteOrder[j]].y - yPos
@@ -283,7 +306,7 @@ func game():
 			sprites.remove(spriteOrder[k])
 			currentScore += 1
 
-	$GUI/scoreLabel.text = var2str(currentScore)
+	$GUI/pointsPanel/pointsLabel.text = var2str(currentScore)
 	ZBuffer.clear()
 	spriteOrder.clear()
 	spriteDistance.clear()
@@ -299,4 +322,12 @@ func _process(delta):
 			var minutes = fmod(currentTime, 60*60) / 60
 			var hours = fmod(currentTime, 60*60*60) / 60
 			
-			$GUI/timerLabel.text = "%01d:%02d:%02d:%01d" % [hours,minutes,seconds,milseconds]
+			$GUI/timerPanel/timerLabel.text = "%01d:%02d:%02d:%01d" % [hours,minutes,seconds,milseconds]
+
+
+func _on_restartButton_pressed():
+	get_tree().reload_current_scene()
+
+
+func _on_exitButton_pressed():
+	get_tree().quit()
