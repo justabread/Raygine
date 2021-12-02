@@ -34,7 +34,7 @@ var map = [
 	[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
-var spriteColor = Color( 0, 0.5, 1, 1 )
+var spriteColor = Color( 1, 0, 0, 1 )
 
 class Entity:
 	var x
@@ -47,18 +47,13 @@ class Entity:
 		y=_y
 		color=_color
 
-var sprites = []
-
 var currentScore = 0
 var goalScore = 0
 
+var sprites = []
 var ZBuffer = []
 var spriteOrder = []
 var spriteDistance = []
-
-func startTimer():
-	if(!isTimerOn):
-		isTimerOn = true
 
 func spawnPoints():
 	sprites.clear()
@@ -72,6 +67,10 @@ func spawnPoints():
 					var entity = Entity.new(float(i + 0.5), float(j + 0.5), spriteColor)
 					sprites.push_back(entity)
 
+func startTimer():
+	if(!isTimerOn):
+		isTimerOn = true
+
 func stopTimer():
 	if(isTimerOn):
 		isTimerOn = false
@@ -79,7 +78,7 @@ func stopTimer():
 func resetTimer():
 	currentTime = 0
 
-func SortSprites(order, dist):
+func sortSprites(order, dist):
 	order.sort()
 	order.invert()
 	
@@ -98,6 +97,8 @@ func _ready():
 	$GUI/timerPanel.visible = true
 	$GUI/pointsPanel.visible = true
 	$GUI/gameOverPanel.visible = false
+	
+	$GUI/pointsPanel/pointsLabelAll.text = var2str(goalScore)
 	
 func _input(event):
 	if event is InputEventMouseMotion:
@@ -150,7 +151,6 @@ func game():
 	
 	if currentScore >= goalScore:
 		var finalScore = currentScore / floor(currentTime)
-#		$GUI/gameOverPanel/finalScoreLabel.text = var2str(finalScore)
 		$GUI/gameOverPanel/finalScoreLabel.text = var2str(stepify(finalScore,0.01))
 
 		$GUI/timerPanel.visible = false
@@ -225,34 +225,15 @@ func game():
 
 		#calculating the height of the column
 		var colHeight: float = abs(int(height / (perpWallDist + 0.0000001)))
+		
 		var colStart = -colHeight / 2.0 + height / 2.0
-
-		#clamp colStart to stay inside the screen
 		if colStart < 0:
 			colStart = 0
 
 		var colEnd = colHeight / 2.0 + height / 2.0
 		if colEnd >= height:
 			colEnd = height - 1
-			
-		var texNum = map[mapX][mapY] - 1
-		var wallX
-		if !side:
-			wallX = yPos + perpWallDist * rayYDir
-		else:
-			wallX = xPos + perpWallDist * rayXDir
-			
-		wallX -= floor(wallX)
-		
-		var texX = int(wallX * float(texSize))
-		if !side && rayXDir > 0:
-			texX = texSize - texX - 1
-			
-		if side && rayYDir < 0:
-			texX = texSize - texX - 1
-			
-		var step = 1.0 * texSize / colHeight
-		var texPos = (colStart - height / 2 + colHeight / 2) * step
+				
 		var colors = [Color( 0, 0, 0, 0 ) , Color( 0, 0, 1, 1 ), Color( 1, 0.84, 0, 1 ) , Color( 0.98, 0.5, 0.45, 1 )]
 		var colColor = colors[map[mapX][mapY]]
 
@@ -271,28 +252,31 @@ func game():
 		spriteDistance.push_back(distance)
 		sprites[i].distance = distance
 		
-	SortSprites(spriteOrder, spriteDistance)
+	sortSprites(spriteOrder, spriteDistance)
 	for j in sprites.size():
 		var xSprite: float = sprites[spriteOrder[j]].x - xPos
 		var ySprite: float = sprites[spriteOrder[j]].y - yPos
 		var invDet: float = 1.0 / (xPlane * yDir - xDir * yPlane)
 		var xTransform: float = invDet * (yDir * xSprite - xDir * ySprite)
 		var yTransform: float = invDet * (-yPlane * xSprite + xPlane * ySprite)
+		if yTransform == 0:
+			yTransform += 0.000001
 		var spriteScreenX: int = int((width / 2) * (1 + xTransform / yTransform));
 
 		var spriteSize: int = abs(int(height / (yTransform))) / 4
+		
 		var drawStartY: int = -spriteSize / 2 + height / 2
-
 		if(drawStartY < 0):
 			drawStartY = 0
+			
 		var drawEndY: int = spriteSize / 2 + height / 2
-
 		if(drawEndY >= height):
 			drawEndY = height - 1
+			
 		var drawStartX: int = -spriteSize / 2 + spriteScreenX
 		if(drawStartX < 0):
 			drawStartX = 0
-
+			
 		var drawEndX: int = spriteSize / 2 + spriteScreenX
 		if(drawEndX >= width):
 			drawEndX = width - 1
@@ -306,7 +290,7 @@ func game():
 			sprites.remove(spriteOrder[k])
 			currentScore += 1
 
-	$GUI/pointsPanel/pointsLabel.text = var2str(currentScore)
+	$GUI/pointsPanel/pointsLabelCurrent.text = var2str(currentScore)
 	ZBuffer.clear()
 	spriteOrder.clear()
 	spriteDistance.clear()
