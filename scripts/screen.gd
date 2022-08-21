@@ -19,6 +19,9 @@ var isTimerOn = false
 const PICKUPDISTANCE = 0.1
 const MOVSPEED = 0.03
 
+const texWidth = 64
+const texHeight = 64
+
 var map = [
 	[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 	[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -54,6 +57,9 @@ var sprites = []
 var ZBuffer = []
 var spriteOrder = []
 var spriteDistance = []
+
+var cobbleTex = load("res://textures/cobble.png") as Texture;
+var cobble = cobbleTex.get_data()
 
 func spawnPoints():
 	sprites.clear()
@@ -113,6 +119,10 @@ func _input(event):
 
 func _draw():
 	game()
+
+func drawTexture(array):
+		var pixColor = cobble.get_pixel(array[0], array[1])
+		draw_line(Vector2(array[0], array[1]), Vector2(array[0], array[1]), pixColor, xRes)
 
 func game():	
 	#checking input events every frame
@@ -226,23 +236,47 @@ func game():
 		#calculating the height of the column
 		var colHeight: float = abs(int(height / (perpWallDist + 0.0000001)))
 		
-		var colStart = -colHeight / 2.0 + height / 2.0
+		var pitch = 0
+		
+		var colStart = -colHeight / 2.0 + height / 2.0 + pitch
 		if colStart < 0:
 			colStart = 0
 
-		var colEnd = colHeight / 2.0 + height / 2.0
+		var colEnd = colHeight / 2.0 + height / 2.0 + pitch
 		if colEnd >= height:
 			colEnd = height - 1
 				
-		var colors = [Color( 0, 0, 0, 0 ) , Color( 0, 0, 1, 1 ), Color( 1, 0.84, 0, 1 ) , Color( 0.98, 0.5, 0.45, 1 )]
-		var colColor = colors[map[mapX][mapY]]
+#		var colors = [Color( 0, 0, 0, 0 ) , Color( 0, 0, 1, 1 ), Color( 1, 0.84, 0, 1 ) , Color( 0.98, 0.5, 0.45, 1 )]
+#		var colColor = colors[map[mapX][mapY]]
+#
+#		if side:
+#			colColor.r = colColor.r / 1.5
+#			colColor.g = colColor.g / 1.5
+#			colColor.b = colColor.b / 1.5
+		
+		var wallX
+		if !side: 
+			wallX = rayYPos + perpWallDist * rayYDir
+		else:          
+			wallX = rayXPos + perpWallDist * rayXDir
+		
+		wallX -= floor((wallX));
 
-		if side:
-			colColor.r = colColor.r / 1.5
-			colColor.g = colColor.g / 1.5
-			colColor.b = colColor.b / 1.5
+		var texX = int(wallX * float(texWidth))
+		if(!side && rayXDir > 0): 
+			texX = texWidth - texX - 1
+		if(!side && rayYDir < 0): 
+			texX = texWidth - texX - 1
 
-		draw_line(Vector2(column, colStart), Vector2(column, colEnd), colColor, xRes)
+		var step = 1.0 * texHeight / colHeight
+
+		var texPos = (colStart - pitch - height / 2 + colHeight / 2) * step
+		
+		for y in range(colStart, colEnd):
+			var thread = Thread.new()
+			thread.start(self, "_thread_function", [column, texPos, step])
+			texPos += step
+			
 		ZBuffer.push_back(perpWallDist)
 		column += xRes
 	
